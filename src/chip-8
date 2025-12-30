@@ -1,0 +1,89 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
+
+typedef struct {
+    uint8_t  ram[4096];     
+    uint8_t  registers[16];   
+    uint16_t index_reg;       
+    uint16_t pc;             
+} Chip8;
+
+
+void reset_console(Chip8 *cpu) {
+    memset(cpu, 0, sizeof(Chip8));
+    
+    
+    cpu->pc = 0x200; 
+    
+    printf("--- Console Reset: Ready to play ---\n");
+}
+
+
+void execute_instruction(Chip8 *cpu) {
+  
+  
+    uint16_t byte1 = cpu->ram[cpu->pc];
+    uint16_t byte2 = cpu->ram[cpu->pc + 1];
+    uint16_t opcode = (byte1 << 8) | byte2;
+
+    uint8_t  first_digit = (opcode & 0xF000) >> 12;
+    uint8_t  reg_index   = (opcode & 0x0F00) >> 8;
+    uint8_t  value       = (opcode & 0x00FF);
+    uint16_t address     = (opcode & 0x0FFF);
+
+    printf("[PC: 0x%03X] Reading Opcode: 0x%04X -> ", cpu->pc, opcode);
+
+  
+    switch (first_digit) {
+        
+        case 0x0: 
+            if (opcode == 0x00E0) {
+                printf("Action: Clear the screen\n");
+            }
+            cpu->pc += 2; 
+            break;
+
+        case 0x1:
+            cpu->pc = address;
+            printf("Action: Jumping to address 0x%03X\n", address);
+            break;
+
+        case 0x6: 
+            cpu->registers[reg_index] = value;
+            printf("Action: Storing %d inside Register V%d\n", value, reg_index);
+            cpu->pc += 2;
+            break;
+
+        case 0x7: 
+            cpu->registers[reg_index] += value;
+            printf("Action: Adding %d to Register V%d\n", value, reg_index);
+            cpu->pc += 2;
+            break;
+
+        default:
+            printf("Action: Unknown (Skipping)\n");
+            cpu->pc += 2;
+            break;
+    }
+}
+
+int main() {
+    Chip8 my_console;
+    reset_console(&my_console);
+
+    my_console.ram[0x200] = 0x60; my_console.ram[0x201] = 0x05;
+    my_console.ram[0x202] = 0x70; my_console.ram[0x203] = 0x0A;
+    my_console.ram[0x204] = 0x00; my_console.ram[0x205] = 0xE0;
+
+    
+    for (int i = 0; i < 3; i++) {
+        execute_instruction(&my_console);
+    }
+
+    printf("\nFinal Result in V0: %d\n", my_console.registers[0]);
+
+    return 0;
+}
